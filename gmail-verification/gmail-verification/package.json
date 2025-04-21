@@ -1,14 +1,17 @@
 {
+  "type": "module", /* ✅ ES Modules system එක enable කරනවා */
   "name": "gmail-verification",
   "version": "1.0.0",
   "description": "Gmail verification server for Firebase registration",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js" /* ✅ Railway එකට start point එක කියනවා */
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "nodemailer": "^6.9.8",
-    "cors": "^2.8.5"
+    "express": "^4.18.2",         /* 🟢 Express web server */
+    "nodemailer": "^6.9.8",       /* 🟢 Gmail OTP email යැවීම */
+    "cors": "^2.8.5",             /* 🟢 Cross-origin requests handle කිරීම */
+    "multer": "^1.4.5-lts.1",     /* 🟢 File upload (profile photo) support */
+    "firebase-admin": "^11.10.1"  /* 🟢 Firebase Admin SDK (Storage + Auth) */
   }
 }
