@@ -15,12 +15,13 @@ import serviceAccount from "./firebase-service-account.json" assert { type: "jso
 /* ✅ Express app initialize කිරීම */
 const app = express();
 
-/* ✅ CORS Middleware Setup - Preflight error fix සමඟ */
+/* ✅ CORS Middleware Setup - OPTIONS request සහ POST fix */
 app.use(cors({
   origin: "*", // ✅ සියලු origin වලට allow කරනවා (CORS Fix)
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "OPTIONS"], // ✅ OPTIONS method එක දැමීම අවශ්‍යයි
   allowedHeaders: ["Content-Type", "x-user-id"] // ✅ custom header එක allow කරනවා
 }));
+app.options("*", cors()); // ✅ OPTIONS method සඳහා CORS middleware call කරනවා
 
 /* ✅ JSON body parse කිරීම */
 app.use(bodyParser.json());
@@ -67,10 +68,10 @@ app.post("/send-code", (req, res) => {
 
 /* 📤 Profile Photo Upload API (Firebase Storage) */
 app.post("/upload-profile-photo", upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).send("❌ File not received");
+  if (!req.file) return res.status(400).send("❌ File not received"); // ❌ file එකක් නැහැ
 
   const uid = req.headers["x-user-id"];
-  if (!uid) return res.status(400).send("❌ User ID missing");
+  if (!uid) return res.status(400).send("❌ User ID missing"); // ❌ user ID එක නැහැ
 
   try {
     const fileName = `profile_images/${uid}.jpg`; // 🔁 Firebase Storage path එක
