@@ -1,4 +1,4 @@
-/* ✅ server.js - OTP Email + Firebase Profile Photo Upload (CORS Fixed) */
+/* ✅ server.js - OTP Email + Firebase Profile Photo Upload (CORS Fixed + Final Version) */
 
 /* 📦 අවශ්‍ය packages import කිරීම */
 import express from "express";
@@ -9,45 +9,44 @@ import bodyParser from "body-parser";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getStorage } from "firebase-admin/storage";
 
-/* ✅ Firebase Admin SDK JSON file import (ඔබ GitHub එකට upload කළ JSON file එක) */
+/* ✅ Firebase Admin SDK JSON file import (GitHub එකට upload කරපු JSON) */
 import serviceAccount from "./firebase-service-account.json" assert { type: "json" };
 
 /* ✅ Express app initialize කිරීම */
 const app = express();
 
-/* 🔐 CORS Policy Headers Set කිරීම - frontend එකට allow කරන්න */
+/* ✅ CORS setup (Preflight + Custom Headers fix) */
 app.use(cors({
-  origin: "https://latestbook.fwh.is", /* ✅ ඔබේ frontend domain එක */
+  origin: "*", // 🔓 සියලු origin වලට allow කරනවා (temporary solution)
   methods: ["GET", "POST"],
-  allowedHeaders: ["Content-Type", "x-user-id"]
+  allowedHeaders: ["Content-Type", "x-user-id"] // ✅ Firebase UID custom header එක
 }));
 
 /* ✅ JSON body parse කිරීම */
 app.use(bodyParser.json());
 
-/* ✅ File upload සඳහා multer memory storage එක */
+/* ✅ File upload setup (multer memory storage) */
 const upload = multer({ storage: multer.memoryStorage() });
 
 /* 🔐 Firebase Admin initialize කිරීම */
 initializeApp({
-  credential: cert(serviceAccount), /* 🗝️ Service account credential එක */
-  storageBucket: "latestbook-110fa.appspot.com" /* ✅ Firebase storage bucket */
+  credential: cert(serviceAccount),
+  storageBucket: "latestbook-110fa.appspot.com" // ✅ ඔබේ Firebase storage bucket එක
 });
+const bucket = getStorage().bucket();
 
-const bucket = getStorage().bucket(); /* 🎯 Firebase storage bucket object එක */
-
-/* ✅ Gmail OTP Email Send API (nodemailer) */
+/* ✅ Gmail OTP Email Send API */
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "latestbook1@gmail.com",     /* 📨 ඔබේ Gmail ලිපිනය */
-    pass: "wpkdrbqbcdzktavz"        /* 🔐 Gmail App Password */
+    user: "latestbook1@gmail.com",     // 📨 ඔබේ Gmail ලිපිනය
+    pass: "wpkdrbqbcdzktavz"            // 🔐 Gmail App Password
   }
 });
 
 /* 📩 POST request - OTP Gmail යැවීම */
 app.post("/send-code", (req, res) => {
-  const { email, code } = req.body; /* 📨 client එකෙන් email සහ code එක ගන්නවා */
+  const { email, code } = req.body;
 
   const mailOptions = {
     from: "latestbook1@gmail.com",
@@ -58,38 +57,42 @@ app.post("/send-code", (req, res) => {
 
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      return res.status(500).json({ success: false, error }); /* ❌ email යැවීම fail උනොත් */
+      return res.status(500).json({ success: false, error });
     } else {
-      return res.status(200).json({ success: true, info });   /* ✅ email සාර්ථකව යවලා */
+      return res.status(200).json({ success: true, info });
     }
   });
 });
 
-/* 📤 Profile Photo Upload API (Firebase Storage) */
+/* 📤 Profile Photo Upload API (Firebase Storage + UID Header + CORS Fixed) */
 app.post("/upload-profile-photo", upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).send("❌ File not received"); /* ❌ file එකක් නෑ */
+  try {
+    if (!req.file) return res.status(400).send("❌ File not received");
 
-  const uid = req.headers["x-user-id"];
-  if (!uid) return res.status(400).send("❌ User ID missing"); /* ❌ user ID එක නැහැ */
+    const uid = req.headers["x-user-id"];
+    if (!uid) return res.status(400).send("❌ User ID missing");
 
-  const fileName = `profile_images/${uid}.jpg`; /* 🔁 Firebase Storage path එක */
-  const file = bucket.file(fileName);           /* 🎯 Firebase file object එක */
+    const fileName = `profile_images/${uid}.jpg`;
+    const file = bucket.file(fileName);
 
-  await file.save(req.file.buffer, {
-    contentType: req.file.mimetype,  /* 🔎 File type එක set කරනවා (image/jpeg etc) */
-    public: false                    /* 🔒 file එක public නෙවෙයි - private access only */
-  });
+    await file.save(req.file.buffer, {
+      contentType: req.file.mimetype,
+      public: false
+    });
 
-  /* 🔁 Firebase storage වලින් signed URL එකක් ගන්නවා (expire නොවෙන) */
-  const [url] = await file.getSignedUrl({
-    action: "read",
-    expires: "03-01-2030" /* 🗓️ URL එක use කරන්න පුළුවන් අවසාන දිනය */
-  });
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: "03-01-2030"
+    });
 
-  res.send({ url }); /* 🔁 Client එකට signed URL එක යවනවා */
+    res.send({ url });
+  } catch (err) {
+    console.error("Upload Error:", err);
+    res.status(500).send("❌ Upload Error");
+  }
 });
 
-/* 🚀 Server Start කිරීම */
+/* 🚀 Server Start */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
